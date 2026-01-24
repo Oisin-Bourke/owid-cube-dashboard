@@ -1,0 +1,3 @@
+data/*.duckdb
+.DS_Store
+
