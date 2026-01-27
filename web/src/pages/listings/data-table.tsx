@@ -56,7 +56,7 @@ function cubeRowsToCountryRows(
 	}))
 }
 
-export function EmissionsTable() {
+const EmissionsTable = () => {
 	const { resultSet, isLoading, error } = useCubeQuery({
 		dimensions: ["emissions.country", "emissions.iso_code"],
 		measures: ["emissions.co2", "emissions.population_latest"],
@@ -229,3 +229,5 @@ export function EmissionsTable() {
 		</div>
 	)
 }
+
+export default EmissionsTable;

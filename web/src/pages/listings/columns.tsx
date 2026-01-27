@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom"
 import type { ColumnDef } from "@tanstack/react-table"
 import { ArrowUpDown, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -52,9 +53,16 @@ export const columns: ColumnDef<CountryRow>[] = [
 				Country <ArrowUpDown className='ml-2 h-4 w-4' />
 			</Button>
 		),
-		cell: ({ row }) => (
-			<div className='font-medium'>{row.getValue("country")}</div>
-		),
+		cell: ({ row }) => {
+			const iso = row.original.isoCode
+			const name = row.getValue("country") as string
+
+			return (
+				<Link to={`/country/${iso}`} className='font-medium underline'>
+					{name}
+				</Link>
+			)
+		},
 	},
 	{
 		accessorKey: "isoCode",
