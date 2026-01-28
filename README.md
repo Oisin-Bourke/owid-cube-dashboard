@@ -4,9 +4,17 @@ An analytics dashboard for exploring country-level CO₂ emissions data using Du
 
 This project demonstrates a modern analytics stack:
 
-- DuckDB for local analytical storage
-- Cube as a semantic layer and API
+- DuckDB for local analytical storage and analytics
+- Cube as a semantic layer and analytics API
 - A Vite + React + TypeScript frontend
+
+## Live Demo (WIP)
+
+Frontend (Vercel):  
+https://owid-cube-dashboard.vercel.app/
+
+> Note: The analytics backend is currently running locally.
+> A fully hosted backend is planned so the demo can be accessed publicly.
 
 ## Tech Stack
 
@@ -18,16 +26,16 @@ This project demonstrates a modern analytics stack:
 
 Source: **Our World in Data – CO₂ and Greenhouse Gas Emissions**
 
-The raw CSV is stored locally and loaded into DuckDB. The DuckDB database file is reproducible via the seed script.
+The raw CSV is stored locally and loaded into DuckDB.  
+The DuckDB database file is reproducible via the provided seed script.
 
 ## Project Structure
-
 ```
 owid-cube-dashboard/
-├─ cube/          # Cube analytics API
-├─ data/          # Raw CSV data (DuckDB database generated locally)
-├─ scripts/       # Database seed script
-└─ web/           # React frontend (Vite + TypeScript)
+├─ cube/ # Cube analytics API
+├─ data/ # Raw CSV data (DuckDB database generated locally)
+├─ scripts/ # Database seed script
+└─ web/ # React frontend (Vite + TypeScript)
 ```
 
 ## Development Setup
@@ -58,13 +66,10 @@ npm install
 npm run dev
 ```
 
-## Status
+## Deployment (WIP)
 
-- DuckDB seeded and queryable
-- Cube semantic model validated
-- React frontend connected to Cube
+The frontend is deployed as a static Vite application on Vercel.
 
-Next:
-- Country detail pages
-- Time-series charts
-
+The analytics backend (Cube + DuckDB) currently runs locally during development.
+A hosted backend deployment is planned so the dashboard can be accessed publicly
+without requiring a local Cube instance.
