@@ -13,8 +13,8 @@ This project demonstrates a modern analytics stack:
 Frontend (Vercel):  
 https://owid-cube-dashboard.vercel.app/
 
-> Note: The analytics backend is currently running locally.
-> A fully hosted backend is planned so the demo can be accessed publicly.
+Backend (Cube API on Fly.io):  
+https://owid-cube-dashboard.fly.dev/
 
 ## Tech Stack
 
@@ -35,7 +35,7 @@ owid-cube-dashboard/
 ├─ cube/ # Cube analytics API
 ├─ data/ # Raw CSV data (DuckDB database generated locally)
 ├─ scripts/ # Database seed script
-└─ web/ # React frontend (Vite + TypeScript)
+└─ web/ # React frontend (Vite + TypeScript + Shadcn UI components)
 ```
 
 ## Development Setup
@@ -70,6 +70,15 @@ npm run dev
 
 The frontend is deployed as a static Vite application on Vercel.
 
-The analytics backend (Cube + DuckDB) currently runs locally during development.
-A hosted backend deployment is planned so the dashboard can be accessed publicly
-without requiring a local Cube instance.
+The analytics backend (Cube + DuckDB) is deployed on Fly.io and serves the
+Cube API consumed by the frontend.
+
+### Backend Deployment Notes
+
+The Cube backend is deployed to Fly.io as a Docker container.
+For this initial deployment, the DuckDB database (`analytics.duckdb`) is
+pre-built locally and bundled into the Docker image at build time.
+
+This keeps the deployment simple for a work-in-progress setup.
+A future improvement would be to move the DuckDB file to persistent
+volume storage and/or seed it at startup.
