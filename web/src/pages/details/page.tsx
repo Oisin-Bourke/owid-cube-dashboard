@@ -1,6 +1,5 @@
 import { useMemo } from "react"
 import { useParams, Link } from "react-router-dom"
-import { useCubeQuery } from "@cubejs-client/react"
 import { Line, LineChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { Legend } from "recharts"
 
@@ -10,12 +9,8 @@ import {
 	ChartTooltipContent,
 	type ChartConfig,
 } from "@/components/ui/chart"
-
-type Point = {
-	year: number
-	co2: number | null
-	co2PerCapita: number | null
-}
+import { useCountryEmissions } from "./hooks"
+import { toPoints } from "./utils"
 
 const chartConfig = {
 	co2: {
@@ -28,38 +23,10 @@ const chartConfig = {
 	},
 } satisfies ChartConfig
 
-function toPoints(rows: Record<string, any>[]): Point[] {
-	return rows
-		.map((row) => ({
-			year: Number(row["emissions.year"]),
-			co2:
-				row["emissions.co2"] == null
-					? null
-					: Number(row["emissions.co2"]),
-			co2PerCapita:
-				row["emissions.co2_per_capita_avg"] == null
-					? null
-					: Number(row["emissions.co2_per_capita_avg"]),
-		}))
-		.filter((p) => Number.isFinite(p.year))
-}
-
 const DetailsPage = () => {
 	const { isoCode } = useParams<{ isoCode: string }>()
 
-	const { resultSet, isLoading, error } = useCubeQuery({
-		dimensions: ["emissions.year"],
-		measures: ["emissions.co2", "emissions.co2_per_capita_avg"],
-		filters: [
-			{
-				member: "emissions.iso_code",
-				operator: "equals",
-				values: [isoCode || ""],
-			},
-		],
-		order: { "emissions.year": "asc" },
-		limit: 500,
-	})
+	const { resultSet, isLoading, error } = useCountryEmissions(isoCode)
 
 	const data = useMemo(() => {
 		if (!resultSet) return []
