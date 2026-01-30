@@ -1,9 +1,4 @@
-export type CountryRow = {
-	country: string
-	isoCode: string
-	co2: number | null
-	population: number | null
-}
+import type { CountryRow } from "./types"
 
 const cubeRowsToCountryRows = (
 	tablePivot: Record<string, any>[],

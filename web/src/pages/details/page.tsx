@@ -1,11 +1,12 @@
 import { useMemo } from "react"
-import { useParams, Link } from "react-router-dom"
+import { useParams, useNavigate } from "react-router-dom"
 import EmisisonsChart from "./emissions-chart"
 import { useCountryEmissions } from "./hooks"
 import { toPoints } from "./utils"
 
 const DetailsPage = () => {
 	const { isoCode } = useParams<{ isoCode: string }>()
+	const navigate = useNavigate()
 
 	const { resultSet, error } = useCountryEmissions(isoCode)
 
@@ -17,9 +18,12 @@ const DetailsPage = () => {
 	return (
 		<main className='p-6'>
 			<div className='mb-6 flex items-center gap-3'>
-				<Link to='/' className='text-sm underline'>
+				<button
+					onClick={() => navigate(-1)}
+					className='text-sm underline'
+				>
 					← Back
-				</Link>
+				</button>
 				<h1 className='text-2xl font-semibold'>
 					Country detail: <span className='font-mono'>{isoCode}</span>
 				</h1>

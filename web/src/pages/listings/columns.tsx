@@ -11,7 +11,7 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import type { CountryRow } from "./data-table"
+import type { CountryRow } from "./types"
 
 const formatNumber = (value: number | null) =>
 	value == null ? "—" : new Intl.NumberFormat("en-US").format(value)
@@ -95,7 +95,18 @@ export const columns: ColumnDef<CountryRow>[] = [
 	},
 	{
 		accessorKey: "population",
-		header: () => <div className='text-right'>Population</div>,
+		header: ({ column }) => (
+			<div className='text-right'>
+				<Button
+					variant='ghost'
+					onClick={() =>
+						column.toggleSorting(column.getIsSorted() === "asc")
+					}
+				>
+					Population <ArrowUpDown className='ml-2 h-4 w-4' />
+				</Button>
+			</div>
+		),
 		cell: ({ row }) => (
 			<div className='text-right tabular-nums'>
 				{formatNumber(row.getValue("population"))}
