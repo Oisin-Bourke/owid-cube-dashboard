@@ -33,29 +33,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton"
 import { columns } from "./columns"
-
-export type CountryRow = {
-	country: string
-	isoCode: string
-	co2: number | null
-	population: number | null
-}
+import { cubeRowsToCountryRows } from "./utils"
 
 const LATEST_YEAR = "2024"
-
-function cubeRowsToCountryRows(
-	tablePivot: Record<string, any>[],
-): CountryRow[] {
-	return tablePivot.map((row) => ({
-		country: String(row["emissions.country"] ?? ""),
-		isoCode: String(row["emissions.iso_code"] ?? ""),
-		co2: row["emissions.co2"] == null ? null : Number(row["emissions.co2"]),
-		population:
-			row["emissions.population_latest"] == null
-				? null
-				: Number(row["emissions.population_latest"]),
-	}))
-}
 
 const EmissionsTable = () => {
 	const { resultSet, isLoading, error } = useCubeQuery({
