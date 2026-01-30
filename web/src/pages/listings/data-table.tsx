@@ -31,6 +31,7 @@ import {
 	DropdownMenuTrigger,
 	DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu"
+import { Skeleton } from "@/components/ui/skeleton"
 import { columns } from "./columns"
 
 export type CountryRow = {
@@ -99,7 +100,6 @@ const EmissionsTable = () => {
 		state: { sorting, columnFilters, columnVisibility, rowSelection },
 	})
 
-	if (isLoading) return <div className='p-6'>Loading…</div>
 	if (error)
 		return <div className='p-6 text-red-600'>Error: {String(error)}</div>
 
@@ -170,7 +170,17 @@ const EmissionsTable = () => {
 					</TableHeader>
 
 					<TableBody>
-						{table.getRowModel().rows.length ? (
+						{isLoading ? (
+							Array.from({ length: 10 }).map((_, i) => (
+								<TableRow key={i}>
+									{columns.map((_, j) => (
+										<TableCell key={j}>
+											<Skeleton className='h-8 w-full' />
+										</TableCell>
+									))}
+								</TableRow>
+							))
+						) : table.getRowModel().rows.length ? (
 							table.getRowModel().rows.map((row) => (
 								<TableRow
 									key={row.id}
@@ -230,4 +240,4 @@ const EmissionsTable = () => {
 	)
 }
 
-export default EmissionsTable;
+export default EmissionsTable
