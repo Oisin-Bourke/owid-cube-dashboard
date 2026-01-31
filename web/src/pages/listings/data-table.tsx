@@ -39,7 +39,7 @@ const EmissionsTable = () => {
 
 	const pageFromUrl = Number(searchParams.get("page") ?? 1) || 1
 	const pageIndex = Math.max(0, pageFromUrl - 1)
-	const pageSize = Number(searchParams.get("pageSize") ?? 10) || 10
+	const pageSize = Number(searchParams.get("pageSize") ?? 25) || 25
 	const sortBy = searchParams.get("sortBy") || "co2"
 	const sortOrder = searchParams.get("sortOrder") || "desc"
 
