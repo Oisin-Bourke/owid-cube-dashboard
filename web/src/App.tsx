@@ -13,12 +13,21 @@ const WipBanner = () => {
 const App = () => {
 	return (
 		<BrowserRouter>
-			<WipBanner />
-			<Routes>
-				<Route path='/' element={<ListingsPage />} />
-				<Route path='/country/:isoCode' element={<DetailPage />} />
-				<Route path='*' element={<Navigate to='/' replace />} />
-			</Routes>
+			<div className='h-dvh overflow-hidden flex flex-col'>
+				<WipBanner />
+
+				{/* Routes area takes remaining height and prevents body scroll */}
+				<div className='flex-1 min-h-0 overflow-hidden'>
+					<Routes>
+						<Route path='/' element={<ListingsPage />} />
+						<Route
+							path='/country/:isoCode'
+							element={<DetailPage />}
+						/>
+						<Route path='*' element={<Navigate to='/' replace />} />
+					</Routes>
+				</div>
+			</div>
 		</BrowserRouter>
 	)
 }

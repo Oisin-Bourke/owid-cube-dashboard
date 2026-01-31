@@ -1,10 +1,6 @@
 import * as React from "react"
 import { useCubeQuery } from "@cubejs-client/react"
-import type {
-	ColumnFiltersState,
-	SortingState,
-	VisibilityState,
-} from "@tanstack/react-table"
+import type { SortingState } from "@tanstack/react-table"
 import {
 	flexRender,
 	getCoreRowModel,
@@ -41,23 +37,25 @@ const LATEST_YEAR = "2024"
 const EmissionsTable = () => {
 	const [searchParams, setSearchParams] = useSearchParams()
 
-	const pageIndex = Number(searchParams.get("page")) || 0
-	const pageSize = Number(searchParams.get("pageSize")) || 10
+	const pageFromUrl = Number(searchParams.get("page") ?? 1) || 1
+	const pageIndex = Math.max(0, pageFromUrl - 1)
+	const pageSize = Number(searchParams.get("pageSize") ?? 10) || 10
 	const sortBy = searchParams.get("sortBy") || "co2"
 	const sortOrder = searchParams.get("sortOrder") || "desc"
 
-	const [pageSizeSelect, setPageSizeSelect] = React.useState(pageSize)
+	const sorting: SortingState = React.useMemo(
+		() => [{ id: sortBy, desc: sortOrder === "desc" }],
+		[sortBy, sortOrder],
+	)
 
-	React.useEffect(() => {
-		setPageSizeSelect(pageSize)
-	}, [pageSize])
-
-	const sortFieldMap: Record<string, string> = {
-		co2: "co2",
-		population: "population_latest",
+	const sortMemberMap: Record<string, string> = {
+		country: "emissions.country", // dimension
+		co2: "emissions.co2", // measure
+		population: "emissions.population_latest", // measure
 	}
 
-	// Fetch paginated data for the table
+	const orderMember = sortMemberMap[sortBy] || `emissions.${sortBy}`
+
 	const { resultSet, isLoading, error } = useCubeQuery({
 		dimensions: ["emissions.country", "emissions.iso_code"],
 		measures: ["emissions.co2", "emissions.population_latest"],
@@ -68,14 +66,11 @@ const EmissionsTable = () => {
 				values: [LATEST_YEAR],
 			},
 		],
-		order: {
-			[`emissions.${sortFieldMap[sortBy] || sortBy}`]: sortOrder,
-		} as any,
+		order: { [orderMember]: sortOrder } as any,
 		limit: pageSize,
 		offset: pageIndex * pageSize,
 	})
 
-	// Get total record count for pagination
 	const { resultSet: countResultSet } = useCubeQuery({
 		measures: ["emissions.count"],
 		filters: [
@@ -88,9 +83,9 @@ const EmissionsTable = () => {
 	})
 
 	const totalRecords = React.useMemo(() => {
-		if (!countResultSet) return 250
-		const count = countResultSet.tablePivot()[0]?.["emissions.count"]
-		return typeof count === "number" ? count : 250
+		const raw = countResultSet?.tablePivot?.()?.[0]?.["emissions.count"]
+		const n = Number(raw)
+		return Number.isFinite(n) ? n : 0
 	}, [countResultSet])
 
 	const data = React.useMemo(() => {
@@ -98,57 +93,78 @@ const EmissionsTable = () => {
 		return cubeRowsToCountryRows(resultSet.tablePivot())
 	}, [resultSet])
 
-	const [sorting, setSorting] = React.useState<SortingState>([
-		{ id: sortBy, desc: sortOrder === "desc" },
-	])
-	const [columnFilters, setColumnFilters] =
-		React.useState<ColumnFiltersState>([])
-	const [columnVisibility, setColumnVisibility] =
-		React.useState<VisibilityState>({})
-	const [rowSelection, setRowSelection] = React.useState({})
+	const updateParams = React.useCallback(
+		(patch: Record<string, string | null>) => {
+			setSearchParams((prev) => {
+				const next = new URLSearchParams(prev)
+				for (const [k, v] of Object.entries(patch)) {
+					if (v === null) next.delete(k)
+					else next.set(k, v)
+				}
+				return next
+			})
+		},
+		[setSearchParams],
+	)
 
 	const table = useReactTable({
 		data,
 		columns,
-		onSortingChange: (updater) => {
-			const newSorting =
-				typeof updater === "function" ? updater(sorting) : updater
-			setSorting(newSorting)
-			const sort = newSorting[0]
-			if (sort) {
-				setSearchParams((prev) => {
-					prev.set("sortBy", sort.id)
-					prev.set("sortOrder", sort.desc ? "desc" : "asc")
-					prev.set("page", "0") // Reset to first page when sorting changes
-					return prev
-				})
-			}
-		},
-		onColumnFiltersChange: setColumnFilters,
-		getCoreRowModel: getCoreRowModel(),
-		getFilteredRowModel: getFilteredRowModel(),
-		getPaginationRowModel: getPaginationRowModel(),
-		getSortedRowModel: getSortedRowModel(),
-		onColumnVisibilityChange: setColumnVisibility,
-		onRowSelectionChange: setRowSelection,
 		manualPagination: true,
 		manualSorting: true,
-		pageCount: Math.ceil(totalRecords / pageSize),
+		pageCount: totalRecords ? Math.ceil(totalRecords / pageSize) : -1, // -1 = unknown
 		state: {
 			sorting,
-			columnFilters,
-			columnVisibility,
-			rowSelection,
 			pagination: { pageIndex, pageSize },
 		},
+		getCoreRowModel: getCoreRowModel(),
+		getPaginationRowModel: getPaginationRowModel(),
+		getSortedRowModel: getSortedRowModel(),
+		getFilteredRowModel: getFilteredRowModel(),
+		onSortingChange: (updater) => {
+			const nextSorting =
+				typeof updater === "function" ? updater(sorting) : updater
+			const sort = nextSorting[0]
+
+			if (!sort) {
+				updateParams({ sortBy: null, sortOrder: null, page: "1" })
+				return
+			}
+
+			updateParams({
+				sortBy: sort.id,
+				sortOrder: sort.desc ? "desc" : "asc",
+				page: "1",
+			})
+		},
+		onPaginationChange: (updater) => {
+			const next =
+				typeof updater === "function"
+					? updater({ pageIndex, pageSize })
+					: updater
+
+			updateParams({
+				page: String(next.pageIndex + 1),
+				pageSize: String(next.pageSize),
+			})
+		},
 	})
+
+	const pageCount = totalRecords
+		? Math.ceil(totalRecords / pageSize)
+		: undefined
+	const canPrev = pageIndex > 0
+	const canNext = totalRecords
+		? (pageIndex + 1) * pageSize < totalRecords
+		: true
 
 	if (error)
 		return <div className='p-6 text-red-600'>Error: {String(error)}</div>
 
 	return (
-		<div className='w-full'>
-			<div className='flex items-center gap-3 py-4'>
+		<div className='w-full h-full flex flex-col min-h-0'>
+			{/* Toolbar */}
+			<div className='flex items-center gap-3 py-4 shrink-0'>
 				<Input
 					placeholder='Filter countries...'
 					value={
@@ -192,140 +208,149 @@ const EmissionsTable = () => {
 				</DropdownMenu>
 			</div>
 
-			<div className='overflow-hidden rounded-md border'>
-				<Table>
-					<TableHeader>
-						{table.getHeaderGroups().map((headerGroup) => (
-							<TableRow key={headerGroup.id}>
-								{headerGroup.headers.map((header) => (
-									<TableHead key={header.id}>
-										{header.isPlaceholder
-											? null
-											: flexRender(
-													header.column.columnDef
-														.header,
-													header.getContext(),
+			{/* Table + pinned footer inside one bordered container */}
+			<div className='flex-1 min-h-0 overflow-hidden rounded-md border flex flex-col'>
+				{/* Header table (non-scrolling) */}
+				<div className='shrink-0 border-b bg-background'>
+					<Table className='w-full table-fixed'>
+						<TableHeader>
+							{table.getHeaderGroups().map((headerGroup) => (
+								<TableRow key={headerGroup.id}>
+									{headerGroup.headers.map((header) => (
+										<TableHead key={header.id}>
+											{header.isPlaceholder
+												? null
+												: flexRender(
+														header.column.columnDef
+															.header,
+														header.getContext(),
+													)}
+										</TableHead>
+									))}
+								</TableRow>
+							))}
+						</TableHeader>
+					</Table>
+				</div>
+
+				{/* Body table (scrolling) */}
+				<div className='flex-1 min-h-0 overflow-auto'>
+					<Table className='w-full table-fixed'>
+						<TableBody>
+							{isLoading ? (
+								Array.from({ length: pageSize }).map((_, i) => (
+									<TableRow key={i}>
+										{columns.map((_, j) => (
+											<TableCell key={j}>
+												<Skeleton className='h-8 w-full' />
+											</TableCell>
+										))}
+									</TableRow>
+								))
+							) : table.getRowModel().rows.length ? (
+								table.getRowModel().rows.map((row) => (
+									<TableRow key={row.id}>
+										{row.getVisibleCells().map((cell) => (
+											<TableCell key={cell.id}>
+												{flexRender(
+													cell.column.columnDef.cell,
+													cell.getContext(),
 												)}
-									</TableHead>
-								))}
-							</TableRow>
-						))}
-					</TableHeader>
-
-					<TableBody>
-						{isLoading ? (
-							Array.from({ length: 10 }).map((_, i) => (
-								<TableRow key={i}>
-									{columns.map((_, j) => (
-										<TableCell key={j}>
-											<Skeleton className='h-8 w-full' />
-										</TableCell>
-									))}
+											</TableCell>
+										))}
+									</TableRow>
+								))
+							) : (
+								<TableRow>
+									<TableCell
+										colSpan={columns.length}
+										className='h-24 text-center'
+									>
+										No results.
+									</TableCell>
 								</TableRow>
-							))
-						) : table.getRowModel().rows.length ? (
-							table.getRowModel().rows.map((row) => (
-								<TableRow
-									key={row.id}
-									data-state={
-										row.getIsSelected() && "selected"
-									}
-								>
-									{row.getVisibleCells().map((cell) => (
-										<TableCell key={cell.id}>
-											{flexRender(
-												cell.column.columnDef.cell,
-												cell.getContext(),
-											)}
-										</TableCell>
-									))}
-								</TableRow>
-							))
-						) : (
-							<TableRow>
-								<TableCell
-									colSpan={columns.length}
-									className='h-24 text-center'
-								>
-									No results.
-								</TableCell>
-							</TableRow>
-						)}
-					</TableBody>
-				</Table>
-			</div>
+							)}
+						</TableBody>
+					</Table>
+				</div>
 
-			<div className='flex items-center justify-end space-x-2 py-4'>
-				<div className='text-muted-foreground flex-1 text-sm'>
-					{table.getFilteredSelectedRowModel().rows.length} of{" "}
-					{table.getFilteredRowModel().rows.length} row(s) selected.
-				</div>
-				<div className='flex items-center space-x-2'>
-					<span className='text-muted-foreground text-sm'>
-						Page {pageIndex + 1} of {table.getPageCount()} (
-						{totalRecords} total records)
-					</span>
-					<select
-						value={pageSizeSelect}
-						onChange={(e) => {
-							const newSize = Number(e.target.value)
-							setPageSizeSelect(newSize)
-							setSearchParams((prev) => {
-								prev.set("pageSize", newSize.toString())
-								prev.set("page", "0")
-								return prev
-							})
-							table.setPageSize(newSize)
-							table.setPageIndex(0)
-						}}
-						className='h-8 px-3 py-1 text-sm border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2'
-					>
-						{[10, 25, 50].map((size) => (
-							<option key={size} value={size}>
-								{size} per page
-							</option>
-						))}
-					</select>
-				</div>
-				<div className='space-x-2'>
-					<Button
-						variant='outline'
-						size='sm'
-						onClick={() => {
-							table.previousPage()
-							setSearchParams((prev) => {
-								prev.set(
-									"page",
-									table
-										.getState()
-										.pagination.pageIndex.toString(),
-								)
-								return prev
-							})
-						}}
-						disabled={!table.getCanPreviousPage()}
-					>
-						Previous
-					</Button>
-					<Button
-						variant='outline'
-						size='sm'
-						onClick={() => {
-							table.nextPage()
-							setSearchParams((prev) => {
-								prev.set(
-									"page",
-									table
-										.getState()
-										.pagination.pageIndex.toString(),
-								)
-								return prev
-							})
-						}}
-						disabled={!table.getCanNextPage()}
-					>
-						Next
-					</Button>
+				{/* Pinned footer (always visible) */}
+				<div className='shrink-0 border-t bg-background p-3'>
+					<div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+						{/* Left: page info */}
+						<div className='text-sm text-muted-foreground'>
+							Page{" "}
+							<span className='font-medium text-foreground'>
+								{pageIndex + 1}
+							</span>
+							{pageCount ? (
+								<>
+									{" "}
+									of{" "}
+									<span className='font-medium text-foreground'>
+										{pageCount}
+									</span>
+								</>
+							) : (
+								<> of …</>
+							)}
+							{totalRecords ? <> · {totalRecords} rows</> : null}
+						</div>
+
+						{/* Right: controls */}
+						<div className='flex items-center gap-2'>
+							<label className='flex items-center gap-2'>
+								<span className='hidden text-sm text-muted-foreground sm:inline'>
+									Rows per page
+								</span>
+								<select
+									value={pageSize}
+									onChange={(e) => {
+										const newSize = Number(e.target.value)
+										updateParams({
+											pageSize: String(newSize),
+											page: "1",
+										})
+									}}
+									className='h-9 w-[140px] rounded-md border border-input bg-background px-3 text-sm'
+								>
+									{[10, 25, 50].map((size) => (
+										<option key={size} value={size}>
+											{size} / page
+										</option>
+									))}
+								</select>
+							</label>
+
+							<Button
+								variant='outline'
+								size='sm'
+								className='h-9'
+								onClick={() =>
+									updateParams({
+										page: String(Math.max(1, pageIndex)),
+									})
+								}
+								disabled={!canPrev}
+							>
+								Previous
+							</Button>
+
+							<Button
+								variant='outline'
+								size='sm'
+								className='h-9'
+								onClick={() =>
+									updateParams({
+										page: String(pageIndex + 2),
+									})
+								}
+								disabled={!canNext}
+							>
+								Next
+							</Button>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>

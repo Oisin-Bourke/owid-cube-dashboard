@@ -2,7 +2,6 @@ import { Link } from "react-router-dom"
 import type { ColumnDef } from "@tanstack/react-table"
 import { ArrowUpDown, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -18,30 +17,6 @@ const formatNumber = (value: number | null) =>
 
 export const columns: ColumnDef<CountryRow>[] = [
 	{
-		id: "select",
-		header: ({ table }) => (
-			<Checkbox
-				checked={
-					table.getIsAllPageRowsSelected() ||
-					(table.getIsSomePageRowsSelected() && "indeterminate")
-				}
-				onCheckedChange={(value) =>
-					table.toggleAllPageRowsSelected(!!value)
-				}
-				aria-label='Select all'
-			/>
-		),
-		cell: ({ row }) => (
-			<Checkbox
-				checked={row.getIsSelected()}
-				onCheckedChange={(value) => row.toggleSelected(!!value)}
-				aria-label='Select row'
-			/>
-		),
-		enableSorting: false,
-		enableHiding: false,
-	},
-	{
 		accessorKey: "country",
 		header: ({ column }) => (
 			<Button
@@ -56,7 +31,6 @@ export const columns: ColumnDef<CountryRow>[] = [
 		cell: ({ row }) => {
 			const iso = row.original.isoCode
 			const name = row.getValue("country") as string
-
 			return (
 				<Link to={`/country/${iso}`} className='font-medium underline'>
 					{name}
@@ -68,10 +42,11 @@ export const columns: ColumnDef<CountryRow>[] = [
 		accessorKey: "isoCode",
 		header: "ISO",
 		cell: ({ row }) => (
-			<div className='text-muted-foreground font-mono'>
+			<div className='font-mono text-muted-foreground'>
 				{row.getValue("isoCode")}
 			</div>
 		),
+		enableSorting: false,
 	},
 	{
 		accessorKey: "co2",
@@ -121,27 +96,27 @@ export const columns: ColumnDef<CountryRow>[] = [
 			return (
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
-						<Button variant='ghost' className='h-8 w-8 p-0'>
-							<span className='sr-only'>Open menu</span>
+						<Button
+							variant='ghost'
+							className='h-8 w-8 p-0'
+							aria-label='Row actions'
+						>
 							<MoreHorizontal className='h-4 w-4' />
 						</Button>
 					</DropdownMenuTrigger>
-					<DropdownMenuContent align='end'>
-						<DropdownMenuGroup>
-							<DropdownMenuLabel>Actions</DropdownMenuLabel>
-							<DropdownMenuItem
-								onClick={() =>
-									navigator.clipboard.writeText(r.isoCode)
-								}
-							>
-								Copy ISO code
-							</DropdownMenuItem>
-						</DropdownMenuGroup>
-						<DropdownMenuGroup>
-							<DropdownMenuItem disabled>
-								View details (next)
-							</DropdownMenuItem>
-						</DropdownMenuGroup>
+					<DropdownMenuContent align='end' side='top' sideOffset={6}>
+						<DropdownMenuItem
+							onClick={() =>
+								navigator.clipboard.writeText(r.isoCode)
+							}
+						>
+							Copy ISO code
+						</DropdownMenuItem>
+						<DropdownMenuItem asChild>
+							<Link to={`/country/${r.isoCode}`}>
+								View details
+							</Link>
+						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			)
